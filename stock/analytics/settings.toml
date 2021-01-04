@@ -1,0 +1,15 @@
+[saving]
+filetype="json"
+
+[server_pinging]
+ping_intervall=3600000  # ping intervall in ms -> Collect new data every 30 minutes (API-Limitations)
+
+[request_specifications]
+legacy_period="2000-01-01"
+resolution="10min"
+
+[alphavantage]
+api_key_var="ALPHAVANTAGE_API_KEY"
+
+[environment]
+alphavantage_api_key="ALPHAVANTAGE_API_KEY"

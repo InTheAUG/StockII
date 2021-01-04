@@ -3,47 +3,44 @@
 import time
 from warnings import warn
 
-import numpy as np
+from stock.analysis.tech_analysis import buildtechanalysis
+from stock.paths import STOCKFILES, PACKAGE_BASEPATH, SETTINGS_PATH
+from stock.analysis.error import InvalidServerResponseError
+
+import os
+import toml
 import pandas as pd
 import requests
 
-import defs
-from analysis.tech_analysis import buildtechanalysis
-from utils.build import initialize_env
-
+SETTINGS = toml.load()
 
 # =======================HELPER FUNCTIONS=======================#
-
-def reverse_df(df):
-    return df.iloc[::-1]
-
-
 def save_response(response, file, filetype, save_log=False):
     if save_log:
-        with open(defs.STOCKFILES + file + ".log", 'a') as f:
+        with open(STOCKFILES + file + ".log", 'a') as f:
             f.write(response.content.decode("utf-8"))
 
-    with open(defs.STOCKFILES + "sector." + filetype, 'w') as f:
+    with open(STOCKFILES + "sector." + filetype, 'w') as f:
         f.write(response.text)
 
 
 def checkValidResponse(response):
     if response.status_code != 200:
-        raise LookupError(f"[-]Invalid server response with Code: {response.status_code} @Sector")
+        raise InvalidServerResponseError(f"[-]Invalid server response with Code: {response.status_code} @Sector")
 
     if "Invalid API call" in response.text or response.text == "{}":
         return False
 
     return True
 
+def reverse_df(df):
+    return df[::-1]
 
 # =======================Data Acquisition=======================#
-
-
 def getsector(save_log=False):
     data = {
         'function': 'sector',
-        'apikey': defs.os.getenv('ALPHAVANTAGE_API_KEY')
+        'apikey': os.getenv(ALPHAVANTAGE_KEY_VAR, default="Hamakavula")
     }
 
     response = requests.get("https://www.alphavantage.co/query",
@@ -54,21 +51,18 @@ def getsector(save_log=False):
 
     response.encoding = "utf-8"
 
-    save_response(response, "sector", defs.FILETYPE_JSON, save_log=save_log)
+    save_response(response, "sector", ".json", save_log=save_log)
 
     return
-
-
-
 
 def getstock(symbol, size="compact",
              interval="15min", mode="TIME_SERIES_DAILY_ADJUSTED", save_log=False):
 
-    key = defs.os.getenv(defs.ALPHAVANTAGE_KEY_VAR, False)
+    key = os.getenv(ALPHAVANTAGE_KEY_VAR, False)
 
     if not key:
         initialize_env()
-        key = defs.os.getenv(defs.ALPHAVANTAGE_KEY_VAR)
+        key = os.getenv(ALPHAVANTAGE_KEY_VAR)
 
     data = {
                 "function": mode,
@@ -121,21 +115,22 @@ def append_col_names(df, exclude, append_val):
 
 def build_df():
 
-    files = os.listdir(defs.STOCKFILES)
+    files = os.listdir(STOCKFILES)
 
     if not files:
         return None
 
     stocks = [x for x in files if '.csv' in x]
 
-    df = reverse_df(pd.read_csv(defs.STOCKFILES + stocks[0]))
+    df = reverse_df(pd.read_csv(STOCKFILES + stocks[0]))
     df = append_col_names(buildtechanalysis(df), 'timestamp', stocks[0].split('.')[0])
 
     for stock in stocks[1:]:
-        current = append_col_names(buildtechanalysis(reverse_df(pd.read_csv(defs.STOCKFILES + stock))), 'timestamp',
+        current = append_col_names(buildtechanalysis(reverse_df(pd.read_csv(STOCKFILES + stock))), 'timestamp',
                                    stock.split('.')[0])
         df = df.merge(current, sort=True, how='outer', on='timestamp')
 
     df.set_index('timestamp', inplace=True)
+    df.interpolate(method="time", inplace=True)
 
     return df

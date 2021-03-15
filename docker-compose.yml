@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:11.6-alpine
+    environment:
+      - POSTGRES_USER=db
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - data-db:/var/lib/postgresql/data
+
+  analytics:
+    build: ./stock/analytics/
+    ports:
+      - "6666:6666"
+
+  trading:
+    build: ./stock/trading/
+    ports:
+      - "7777:7777"
+
+  gui:
+    build: ./stock/gui/
+    ports:
+      - "8888:8888"
+
+volumes:
+  data-db:

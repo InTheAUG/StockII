@@ -1,0 +1,1 @@
+# this file creates backtests for certain indicator values using past data and trained models
